@@ -1,13 +1,60 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
-import { mockWaterSources } from "../../data/mockData";
-import type { WaterSource } from "../../data/mockData";
-import { Map, MapPin, Layers, ArrowRight, Droplets, Thermometer } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import type { MonitoringStation, ApiError } from "../../lib/api";
+import { authorityApi } from "../../lib/api";
+import { getToken, clearAuth } from "../../lib/auth";
+import { Map, MapPin, Layers, ArrowRight, Loader } from "lucide-react";
 
 export default function WaterMap() {
-  const [selectedSource, setSelectedSource] = useState<WaterSource>(mockWaterSources[0]);
+  const navigate = useNavigate();
+  const [stations, setStations] = useState<MonitoringStation[]>([]);
+  const [selectedStation, setSelectedStation] = useState<MonitoringStation | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const getRiskPinColor = (risk: WaterSource["risk"]) => {
+  useEffect(() => {
+    const fetchStations = async () => {
+      const token = getToken();
+      if (!token) {
+        navigate("/user/login");
+        return;
+      }
+
+      try {
+        setLoading(true);
+        const data = await authorityApi.getAllStations(token);
+        setStations(data);
+        if (data.length > 0) {
+          setSelectedStation(data[0]);
+        }
+        setError(null);
+      } catch (err) {
+        const apiError = err as ApiError;
+        setError(apiError.detail || "Failed to load stations");
+        if (apiError.statusCode === 401) {
+          clearAuth();
+          navigate("/user/login");
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStations();
+  }, [navigate]);
+
+  // Map public_warning to risk level for UI
+  const getWarningRisk = (warning: string): "Stable" | "Watch" | "High" | "Critical" => {
+    switch (warning) {
+      case "CRITICAL": return "Critical";
+      case "WARNING": return "High";
+      case "CAUTION": return "Watch";
+      default: return "Stable";
+    }
+  };
+
+  const getRiskPinColor = (warning: string) => {
+    const risk = getWarningRisk(warning);
     switch (risk) {
       case "Critical":
         return "bg-red-500 text-white ring-red-400";
@@ -21,7 +68,8 @@ export default function WaterMap() {
     }
   };
 
-  const getRiskBadge = (risk: WaterSource["risk"]) => {
+  const getRiskBadge = (warning: string) => {
+    const risk = getWarningRisk(warning);
     switch (risk) {
       case "Critical": return "bg-red-100 text-red-700";
       case "High":     return "bg-orange-100 text-orange-700";
@@ -31,12 +79,31 @@ export default function WaterMap() {
     }
   };
 
-  // Relative positions for the 3 Arkavathi stations on mock map canvas
-  const stationPositions: Record<string, { top: string; left: string }> = {
-    "ARK-001": { top: "18%", left: "70%" },
-    "ARK-002": { top: "45%", left: "45%" },
-    "ARK-003": { top: "72%", left: "22%" },
+  // Generate relative positions based on station count and code
+  const getStationPosition = (_stationCode: string, index: number): { top: string; left: string } => {
+    const positions = [
+      { top: "18%", left: "70%" },
+      { top: "45%", left: "45%" },
+      { top: "72%", left: "22%" },
+    ];
+    return positions[index] || { top: "50%", left: "50%" };
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader className="h-8 w-8 animate-spin text-cyan-600" />
+      </div>
+    );
+  }
+
+  if (error || stations.length === 0) {
+    return (
+      <div className="text-center py-12 bg-slate-50 rounded-2xl border border-dashed border-slate-300 p-6">
+        <p className="text-slate-600 font-semibold">{error || "No monitoring stations found"}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -48,16 +115,16 @@ export default function WaterMap() {
             <span>Water Intelligence Map</span>
           </div>
           <h1 className="mt-2 text-2xl font-bold tracking-tight text-slate-900">
-            Arkavathi River — Monitoring Stations
+            Monitoring Stations
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            Real-time risk status across upstream, midstream, and downstream monitoring nodes.
+            Real-time status across all monitoring nodes.
           </p>
         </div>
 
         <div className="flex items-center gap-2">
           <span className="text-xs font-semibold text-slate-500 bg-white border border-slate-200 px-3 py-1.5 rounded-xl">
-            3 Active Stations
+            {stations.length} Active Station{stations.length !== 1 ? 's' : ''}
           </span>
         </div>
       </div>
@@ -71,10 +138,10 @@ export default function WaterMap() {
           <div className="flex items-center justify-between px-5 py-4 z-10">
             <div className="rounded-xl bg-slate-900/90 px-3.5 py-2 border border-slate-800 backdrop-blur text-xs font-bold text-slate-300 flex items-center gap-2">
               <Layers className="h-4 w-4 text-cyan-400" />
-              <span>Arkavathi Catchment Basin (Karnataka)</span>
+              <span>Monitoring Network</span>
             </div>
             <div className="rounded-xl bg-slate-900/90 px-3 py-1.5 border border-slate-800 text-[11px] font-mono text-cyan-400">
-              13.1°N – 12.9°N Corridor
+              Active Status
             </div>
           </div>
 
@@ -124,16 +191,16 @@ export default function WaterMap() {
             </svg>
 
             {/* Station Markers */}
-            {mockWaterSources.map((source) => {
-              const isSelected = selectedSource.id === source.id;
-              const pos = stationPositions[source.id];
-              const pinColor = getRiskPinColor(source.risk);
+            {stations.map((station, index) => {
+              const isSelected = selectedStation?.id === station.id;
+              const pos = getStationPosition(station.station_code, index);
+              const pinColor = getRiskPinColor(station.public_warning);
 
               return (
                 <button
-                  key={source.id}
+                  key={station.id}
                   type="button"
-                  onClick={() => setSelectedSource(source)}
+                  onClick={() => setSelectedStation(station)}
                   style={pos ? { top: pos.top, left: pos.left } : {}}
                   className={`absolute transform -translate-x-1/2 -translate-y-1/2 flex flex-col items-center transition-all duration-200 cursor-pointer ${
                     isSelected ? "scale-125 z-20" : "hover:scale-110 z-10"
@@ -148,10 +215,10 @@ export default function WaterMap() {
                       : "bg-slate-900/90 border-slate-700"
                   }`}>
                     <p className={`text-[11px] font-bold whitespace-nowrap ${isSelected ? "text-slate-900" : "text-white"}`}>
-                      {source.id}
+                      {station.station_code}
                     </p>
                     <p className={`text-[9px] font-bold uppercase tracking-wider ${isSelected ? "text-slate-600" : "text-cyan-400"}`}>
-                      {source.risk} • {source.healthScore}
+                      {getWarningRisk(station.public_warning)}
                     </p>
                   </div>
                 </button>
@@ -167,10 +234,9 @@ export default function WaterMap() {
           <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 border-t border-slate-800/80 text-[11px]">
             <div className="flex items-center gap-4 text-slate-400 font-semibold">
               <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-emerald-500" /> Stable</span>
-              <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-amber-500" /> Watch</span>
-              <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-orange-500" /> High</span>
+              <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-amber-500" /> Caution</span>
+              <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-orange-500" /> Warning</span>
               <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-red-500" /> Critical</span>
-              <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-slate-500" /> Offline</span>
             </div>
             <span className="font-mono text-slate-500">Interactive GIS Placeholder — Mapbox Ready</span>
           </div>
@@ -178,87 +244,83 @@ export default function WaterMap() {
 
         {/* Station Summary Panel */}
         <div className="rounded-2xl border border-slate-200 bg-white shadow-sm flex flex-col">
-          <div className="px-6 py-5 border-b border-slate-100">
-            <p className="text-[10px] font-extrabold uppercase tracking-wider text-cyan-700">Station Summary</p>
-            <h3 className="text-lg font-bold text-slate-900 mt-1 leading-tight">{selectedSource.name}</h3>
-            <p className="text-xs text-slate-500 mt-0.5">{selectedSource.id} — {selectedSource.location}</p>
-          </div>
+          {selectedStation && (
+            <>
+              <div className="px-6 py-5 border-b border-slate-100">
+                <p className="text-[10px] font-extrabold uppercase tracking-wider text-cyan-700">Station Summary</p>
+                <h3 className="text-lg font-bold text-slate-900 mt-1 leading-tight">{selectedStation.station_name}</h3>
+                <p className="text-xs text-slate-500 mt-0.5">{selectedStation.station_code} — {selectedStation.location}</p>
+              </div>
 
-          <div className="px-6 py-4 flex-1 space-y-1">
-            <div className="flex items-center justify-between py-2 border-b border-slate-50">
-              <span className="text-xs text-slate-500 font-medium">Risk Status</span>
-              <span className={`rounded-full px-2.5 py-0.5 text-xs font-black uppercase tracking-wider ${getRiskBadge(selectedSource.risk)}`}>
-                {selectedSource.risk}
-              </span>
-            </div>
-            <div className="flex items-center justify-between py-2 border-b border-slate-50">
-              <span className="text-xs text-slate-500 font-medium">Health Score</span>
-              <span className="text-sm font-extrabold text-cyan-700">{selectedSource.healthScore}/100</span>
-            </div>
-            <div className="flex items-center justify-between py-2 border-b border-slate-50">
-              <span className="text-xs text-slate-500 font-medium flex items-center gap-1"><Droplets className="h-3.5 w-3.5" /> pH</span>
-              <span className="text-sm font-bold text-slate-800">{selectedSource.pH}</span>
-            </div>
-            <div className="flex items-center justify-between py-2 border-b border-slate-50">
-              <span className="text-xs text-slate-500 font-medium">Turbidity</span>
-              <span className="text-sm font-bold text-slate-800">{selectedSource.turbidity} NTU</span>
-            </div>
-            <div className="flex items-center justify-between py-2 border-b border-slate-50">
-              <span className="text-xs text-slate-500 font-medium">TDS</span>
-              <span className="text-sm font-bold text-slate-800">{selectedSource.tds} mg/L</span>
-            </div>
-            <div className="flex items-center justify-between py-2 border-b border-slate-50">
-              <span className="text-xs text-slate-500 font-medium flex items-center gap-1"><Thermometer className="h-3.5 w-3.5" /> Temperature</span>
-              <span className="text-sm font-bold text-slate-800">{selectedSource.temperature}°C</span>
-            </div>
-            <div className="flex items-center justify-between py-2 border-b border-slate-50">
-              <span className="text-xs text-slate-500 font-medium">Dissolved O₂</span>
-              <span className="text-sm font-bold text-slate-800">{selectedSource.dissolvedOxygen} mg/L</span>
-            </div>
-            <div className="flex items-center justify-between py-2">
-              <span className="text-xs text-slate-500 font-medium">Last Update</span>
-              <span className="text-xs font-bold text-slate-800">{selectedSource.updatedTime}</span>
-            </div>
-          </div>
+              <div className="px-6 py-4 flex-1 space-y-1">
+                <div className="flex items-center justify-between py-2 border-b border-slate-50">
+                  <span className="text-xs text-slate-500 font-medium">Status</span>
+                  <span className={`rounded-full px-2.5 py-0.5 text-xs font-black uppercase tracking-wider ${getRiskBadge(selectedStation.public_warning)}`}>
+                    {getWarningRisk(selectedStation.public_warning)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between py-2 border-b border-slate-50">
+                  <span className="text-xs text-slate-500 font-medium">Zone</span>
+                  <span className="text-sm font-bold text-slate-800">{selectedStation.zone}</span>
+                </div>
+                <div className="flex items-center justify-between py-2 border-b border-slate-50">
+                  <span className="text-xs text-slate-500 font-medium">Water Source</span>
+                  <span className="text-sm font-bold text-slate-800">{selectedStation.water_source.name}</span>
+                </div>
+                <div className="flex items-center justify-between py-2 border-b border-slate-50">
+                  <span className="text-xs text-slate-500 font-medium">Latitude</span>
+                  <span className="text-sm font-mono font-bold text-slate-800">{selectedStation.latitude.toFixed(4)}</span>
+                </div>
+                <div className="flex items-center justify-between py-2 border-b border-slate-50">
+                  <span className="text-xs text-slate-500 font-medium">Longitude</span>
+                  <span className="text-sm font-mono font-bold text-slate-800">{selectedStation.longitude.toFixed(4)}</span>
+                </div>
+                <div className="flex items-center justify-between py-2">
+                  <span className="text-xs text-slate-500 font-medium">Last Update</span>
+                  <span className="text-xs font-bold text-slate-800">
+                    {new Date(selectedStation.created_at).toLocaleDateString()}
+                  </span>
+                </div>
+              </div>
 
-          <div className="px-6 pb-5">
-            <Link
-              to={`/authority/stations/${selectedSource.id}`}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-sm font-bold text-white hover:bg-slate-800 transition-colors"
-            >
-              <span>View Full Details</span>
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-          </div>
+              <div className="px-6 pb-5">
+                <Link
+                  to={`/authority/stations/${selectedStation.station_code}`}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-sm font-bold text-white hover:bg-slate-800 transition-colors"
+                >
+                  <span>View Full Details</span>
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
       {/* Station list below map */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {mockWaterSources.map((source) => (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {stations.map((station) => (
           <button
-            key={source.id}
-            onClick={() => setSelectedSource(source)}
+            key={station.id}
+            onClick={() => setSelectedStation(station)}
             className={`rounded-2xl border p-5 text-left transition-all hover:shadow-md ${
-              selectedSource.id === source.id
+              selectedStation?.id === station.id
                 ? "border-cyan-400 bg-cyan-50 shadow-sm"
                 : "border-slate-200 bg-white"
             }`}
           >
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-mono font-bold text-slate-500">{source.id}</span>
-              <span className={`rounded-full px-2 py-0.5 text-[10px] font-black uppercase ${getRiskBadge(source.risk)}`}>
-                {source.risk}
+              <span className="text-xs font-mono font-bold text-slate-500">{station.station_code}</span>
+              <span className={`rounded-full px-2 py-0.5 text-[10px] font-black uppercase ${getRiskBadge(station.public_warning)}`}>
+                {getWarningRisk(station.public_warning)}
               </span>
             </div>
-            <p className="font-bold text-slate-900 text-sm">{source.name}</p>
-            <p className="text-xs text-slate-500 mt-0.5">{source.location}</p>
+            <p className="font-bold text-slate-900 text-sm">{station.station_name}</p>
+            <p className="text-xs text-slate-500 mt-0.5">{station.location}</p>
             <div className="mt-3 flex items-center gap-3 text-xs">
-              <span className="font-semibold text-slate-700">pH {source.pH}</span>
+              <span className="font-semibold text-slate-700">{station.zone}</span>
               <span className="text-slate-400">·</span>
-              <span className="font-semibold text-slate-700">{source.turbidity} NTU</span>
-              <span className="text-slate-400">·</span>
-              <span className="font-semibold text-cyan-600">{source.healthScore}/100</span>
+              <span className="font-semibold text-cyan-600">{station.water_source.name}</span>
             </div>
           </button>
         ))}

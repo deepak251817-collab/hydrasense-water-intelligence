@@ -8,6 +8,9 @@ class Settings(BaseSettings):
     JWT_SECRET_KEY: str = "hydrasense_super_secret_jwt_signing_key_32_bytes_min!"
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
+    MQTT_BROKER_HOST: str = "localhost"
+    MQTT_BROKER_PORT: int = 1883
+    MQTT_TOPIC_PREFIX: str = "hydrasense/stations"
 
     model_config = SettingsConfigDict(
         env_file=".env",

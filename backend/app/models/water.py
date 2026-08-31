@@ -47,3 +47,29 @@ class MonitoringStation(Base):
     )
 
     water_source: Mapped["WaterSource"] = relationship("WaterSource", back_populates="stations")
+    readings: Mapped[List["SensorReading"]] = relationship(
+        "SensorReading",
+        back_populates="station",
+        cascade="all, delete-orphan"
+    )
+
+
+class SensorReading(Base):
+    __tablename__ = "sensor_readings"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True, autoincrement=True)
+    station_id: Mapped[int] = mapped_column(ForeignKey("monitoring_stations.id"), nullable=False, index=True)
+    device_id: Mapped[str] = mapped_column(String(100), nullable=False)
+    timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
+    ph: Mapped[float] = mapped_column(Float, nullable=False)
+    turbidity: Mapped[float] = mapped_column(Float, nullable=False)
+    tds: Mapped[float] = mapped_column(Float, nullable=False)
+    temperature: Mapped[float] = mapped_column(Float, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False
+    )
+
+    station: Mapped["MonitoringStation"] = relationship("MonitoringStation", back_populates="readings")
+

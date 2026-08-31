@@ -47,3 +47,31 @@ class MonitoringStationAuthorityResponse(BaseModel):
     water_source: WaterSourceResponse
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class LatestSensorReadingResponse(BaseModel):
+    station_code: str
+    device_id: str
+    timestamp: datetime
+    pH: float
+    turbidity: float
+    tds: float
+    temperature: float
+
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
+
+class SensorReadingResponse(BaseModel):
+    id: int
+    station_id: int
+    station_code: Optional[str] = None
+    device_id: str
+    timestamp: datetime
+    pH: float
+    turbidity: float
+    tds: float
+    temperature: float
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+

@@ -5,6 +5,8 @@ from app.schemas.water import (
     WaterSourceResponse,
     MonitoringStationPublicResponse,
     MonitoringStationAuthorityResponse,
+    LatestSensorReadingResponse,
+    SensorReadingResponse,
 )
 
 __all__ = [
@@ -20,4 +22,6 @@ __all__ = [
     "WaterSourceResponse",
     "MonitoringStationPublicResponse",
     "MonitoringStationAuthorityResponse",
+    "LatestSensorReadingResponse",
+    "SensorReadingResponse",
 ]

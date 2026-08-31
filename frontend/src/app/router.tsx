@@ -1,4 +1,5 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
+import { ProtectedRoute } from "../components/ProtectedRoute";
 import PublicLayout from "../layouts/PublicLayout";
 import AuthorityLayout from "../layouts/AuthorityLayout";
 
@@ -89,19 +90,35 @@ export const router = createBrowserRouter([
       },
       {
         path: "dashboard",
-        element: <UserDashboard />,
+        element: (
+          <ProtectedRoute requiredRole="PRODUCT_USER">
+            <UserDashboard />
+          </ProtectedRoute>
+        ),
       },
       {
         path: "check-water",
-        element: <UserCheckWater />,
+        element: (
+          <ProtectedRoute requiredRole="PRODUCT_USER">
+            <UserCheckWater />
+          </ProtectedRoute>
+        ),
       },
       {
         path: "devices",
-        element: <UserDevices />,
+        element: (
+          <ProtectedRoute requiredRole="PRODUCT_USER">
+            <UserDevices />
+          </ProtectedRoute>
+        ),
       },
       {
         path: "history",
-        element: <UserHistory />,
+        element: (
+          <ProtectedRoute requiredRole="PRODUCT_USER">
+            <UserHistory />
+          </ProtectedRoute>
+        ),
       }
     ],
   },
@@ -111,43 +128,83 @@ export const router = createBrowserRouter([
     children: [
       {
         index: true,
-        element: <CommandCenter />,
+        element: (
+          <ProtectedRoute requiredRole="AUTHORITY">
+            <CommandCenter />
+          </ProtectedRoute>
+        ),
       },
       {
         path: "sources",
-        element: <WaterSources />,
+        element: (
+          <ProtectedRoute requiredRole="AUTHORITY">
+            <WaterSources />
+          </ProtectedRoute>
+        ),
       },
       {
         path: "monitoring",
-        element: <LiveMonitoring />,
+        element: (
+          <ProtectedRoute requiredRole="AUTHORITY">
+            <LiveMonitoring />
+          </ProtectedRoute>
+        ),
       },
       {
         path: "alerts",
-        element: <Alerts />,
+        element: (
+          <ProtectedRoute requiredRole="AUTHORITY">
+            <Alerts />
+          </ProtectedRoute>
+        ),
       },
       {
         path: "incidents",
-        element: <Incidents />,
+        element: (
+          <ProtectedRoute requiredRole="AUTHORITY">
+            <Incidents />
+          </ProtectedRoute>
+        ),
       },
       {
         path: "inspections",
-        element: <Inspections />,
+        element: (
+          <ProtectedRoute requiredRole="AUTHORITY">
+            <Inspections />
+          </ProtectedRoute>
+        ),
       },
       {
         path: "laboratory",
-        element: <Laboratory />,
+        element: (
+          <ProtectedRoute requiredRole="AUTHORITY">
+            <Laboratory />
+          </ProtectedRoute>
+        ),
       },
       {
         path: "map",
-        element: <WaterMap />,
+        element: (
+          <ProtectedRoute requiredRole="AUTHORITY">
+            <WaterMap />
+          </ProtectedRoute>
+        ),
       },
       {
         path: "analytics",
-        element: <Analytics />,
+        element: (
+          <ProtectedRoute requiredRole="AUTHORITY">
+            <Analytics />
+          </ProtectedRoute>
+        ),
       },
       {
         path: "stations/:stationId",
-        element: <StationDetail />,
+        element: (
+          <ProtectedRoute requiredRole="AUTHORITY">
+            <StationDetail />
+          </ProtectedRoute>
+        ),
       }
     ],
   },

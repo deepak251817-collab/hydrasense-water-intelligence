@@ -1,21 +1,96 @@
-import { Link } from "react-router-dom";
-import { CheckCircle2, Droplets, ArrowRight, Activity, History } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { CheckCircle2, Droplets, ArrowRight, Activity, History, LogOut, Loader } from "lucide-react";
+import { useEffect, useState } from "react";
+import type { ApiError } from "../../lib/api";
+import { productApi } from "../../lib/api";
+import { getToken, getUser, clearAuth } from "../../lib/auth";
+import type { AuthUser } from "../../lib/auth";
 
 export default function UserDashboard() {
+  const navigate = useNavigate();
+  const [user, setUser] = useState<AuthUser | null>(getUser());
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      const token = getToken();
+      if (!token) {
+        navigate("/user/login");
+        return;
+      }
+
+      try {
+        setLoading(true);
+        // Fetch full profile from backend
+        const profile = await productApi.getProfile(token);
+        // Update user state with backend data
+        setUser({
+          id: profile.id,
+          email: profile.email,
+          full_name: profile.full_name,
+          role: profile.role,
+        });
+        setError(null);
+      } catch (err) {
+        const apiError = err as ApiError;
+        setError(apiError.detail || "Failed to load profile");
+        if (apiError.statusCode === 401) {
+          clearAuth();
+          navigate("/user/login");
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProfile();
+  }, [navigate]);
+
+  const handleLogout = () => {
+    clearAuth();
+    navigate("/user/login");
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader className="h-8 w-8 animate-spin text-cyan-600" />
+      </div>
+    );
+  }
+
+  if (error || !user) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-slate-600">{error || "Failed to load profile"}</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
-          <p className="text-sm text-slate-500 mt-1">Welcome back, Jane. Your HydraSense device is active.</p>
+          <p className="text-sm text-slate-500 mt-1">Welcome back, {user.full_name}. Your HydraSense device is active.</p>
         </div>
-        <Link 
-          to="/user/check-water"
-          className="bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2.5 px-5 rounded-xl shadow-sm transition-colors text-sm flex items-center gap-2"
-        >
-          <Droplets className="h-4 w-4" />
-          <span>New Water Check</span>
-        </Link>
+        <div className="flex gap-3">
+          <Link 
+            to="/user/check-water"
+            className="bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2.5 px-5 rounded-xl shadow-sm transition-colors text-sm flex items-center gap-2"
+          >
+            <Droplets className="h-4 w-4" />
+            <span>New Water Check</span>
+          </Link>
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200"
+          >
+            <LogOut className="h-4 w-4" />
+            <span>Logout</span>
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

@@ -1,0 +1,2 @@
+station_code,device_id,timestamp,ph,turbidity,tds,temperature,hour,day_of_week,ph_change,turbidity_change,tds_change,temperature_change
+STA-01,DEV-01,2026-09-01T10:00:00Z,7.2,2.5,250.0,22.5,10,1,0.0,0.0,0.0,0.0

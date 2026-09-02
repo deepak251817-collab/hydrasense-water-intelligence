@@ -23,12 +23,17 @@ import logging
 from pathlib import Path
 from typing import Tuple, Optional
 import pandas as pd
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+ROOT_DIR = BASE_DIR.parent
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
+
 from ml.preprocessing.features import engineer_features
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
-BASE_DIR = Path(__file__).resolve().parent.parent
 DEFAULT_CLEAN_PATH = BASE_DIR / "data" / "processed" / "clean_sensor_readings.csv"
 PROCESSED_DIR = BASE_DIR / "data" / "processed"
 

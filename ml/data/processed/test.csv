@@ -1,2 +1,4 @@
-station_code,device_id,timestamp,ph,turbidity,tds,temperature,hour,day_of_week,ph_change,turbidity_change,tds_change,temperature_change
-STA-01,DEV-01,2026-09-01T12:00:00Z,7.8,3.5,270.0,23.5,12,1,0.3,0.5,10.0,0.5
+station_code,device_id,timestamp,ph,turbidity,tds,temperature,hour,day_of_week,ph_change,turbidity_change,tds_change,temperature_change
+ARK-001,STATION-ARK-001,2026-08-31T18:30:53Z,5.32,83.49,1133.5,29.6,18,0,-1.7799999999999994,72.39999999999999,824.7,2.5
+ARK-002,STATION-ARK-002,2026-08-31T18:30:53Z,5.42,88.13,1112.6,28.7,18,0,-1.7300000000000004,75.61999999999999,798.8999999999999,2.0
+ARK-003,STATION-ARK-003,2026-08-31T18:30:53Z,5.28,83.11,1171.4,29.8,18,0,-1.6899999999999995,68.2,835.9000000000001,2.3000000000000007
